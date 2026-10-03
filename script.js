@@ -1,4 +1,4 @@
-const form = document.querySelector('#invitation-form');
+ const form = document.querySelector('#invitation-form');
 const dateField = document.querySelector('#date');
 const dialog = document.querySelector('#success-dialog');
 const successText = document.querySelector('#success-text');
