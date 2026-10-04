@@ -23,7 +23,7 @@ form.addEventListener('submit', async (event) => {
     successText.textContent = `Желание на ${when}, ${details.time} отправлено Марку. В скором времени отвечу любовь моя`;
     dialog.showModal(); form.reset();
   } catch {
-    successText.textContent = 'Не удалось отправить приглашение. Проверьте подключение сайта и попробуйте ещё раз.';
+    successText.textContent = 'Бля ну че за пиздец, включи блядский свой интернет';
     dialog.showModal();
   } finally {
     submitButton.disabled = false;
