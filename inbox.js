@@ -1,34 +1,129 @@
-const form = document.querySelector('#invitation-form');
-const dateField = document.querySelector('#date');
-const dialog = document.querySelector('#success-dialog');
-const successText = document.querySelector('#success-text');
 const api = window.INVITATION_API_BASE?.replace(/\/$/, '') || '';
 
-dateField.min = new Date().toISOString().split('T')[0];
+const login = document.querySelector('#login');
+const loginForm = document.querySelector('#login-form');
+const passwordField = document.querySelector('#password');
+const loginMessage = document.querySelector('#login-message');
+const inbox = document.querySelector('#inbox');
+const invitations = document.querySelector('#invitations');
+const logoutButton = document.querySelector('#logout');
 
-form.addEventListener('submit', async (event) => {
+function showMessage(message) {
+  loginMessage.textContent = message;
+}
+
+function formatDate(date) {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(new Date(date + 'T12:00:00'));
+}
+
+function renderInvitations(items) {
+  if (!items.length) {
+    invitations.innerHTML = '<p class="form-message">Пока нет новых приглашений.</p>';
+    return;
+  }
+
+  invitations.innerHTML = items.map(item => `
+    <article class="card invitation-item">
+      <p class="step">${formatDate(item.date)} · ${item.time}</p>
+      <h3>${item.mood}</h3>
+      ${item.wish ? `<p><strong>Хочу:</strong> ${escapeHtml(item.wish)}</p>` : ''}
+      ${item.boundaries ? `<p><strong>Важно:</strong> ${escapeHtml(item.boundaries)}</p>` : ''}
+      <button class="outline delete-invitation" type="button" data-id="${item.id}">Удалить</button>
+    </article>
+  `).join('');
+
+  document.querySelectorAll('.delete-invitation').forEach(button => {
+    button.addEventListener('click', () => deleteInvitation(button.dataset.id));
+  });
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+async function loadInvitations() {
+  const response = await fetch(`${api}/api/invitations`, {
+    credentials: 'include'
+  });
+
+  if (response.status === 401) {
+    login.classList.remove('hidden');
+    inbox.classList.add('hidden');
+    return;
+  }
+
+  if (!response.ok) throw new Error('Не удалось загрузить приглашения.');
+
+  const items = await response.json();
+  login.classList.add('hidden');
+  inbox.classList.remove('hidden');
+  renderInvitations(items);
+}
+
+loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!form.reportValidity()) return;
+  showMessage('');
 
-  const details = Object.fromEntries(new FormData(form));
-  const submitButton = form.querySelector('button[type="submit"]');
-  submitButton.disabled = true;
-  submitButton.textContent = 'Отправляем…';
+  const button = loginForm.querySelector('button');
+  button.disabled = true;
+  button.textContent = 'Проверяем…';
+
   try {
-    const response = await fetch(`${api}/api/invitations`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details)
+    const response = await fetch(`${api}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ password: passwordField.value })
     });
-    if (!response.ok) throw new Error('request failed');
-    const when = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date(`${details.date}T12:00:00`));
-    successText.textContent = `Приглашение на ${when}, ${details.time} отправлено. Обсудите его вместе и выберите то, что комфортно вам обоим.`;
-    dialog.showModal(); form.reset();
+
+    if (!response.ok) {
+      showMessage('Неверный пароль.');
+      passwordField.value = '';
+      return;
+    }
+
+    passwordField.value = '';
+    await loadInvitations();
   } catch {
-    successText.textContent = 'Не удалось отправить приглашение. Проверьте подключение сайта и попробуйте ещё раз.';
-    dialog.showModal();
+    showMessage('Не удалось подключиться к серверу. Проверь настройки Render.');
   } finally {
-    submitButton.disabled = false;
-    submitButton.innerHTML = 'Отправить приглашение <span>→</span>';
+    button.disabled = false;
+    button.innerHTML = 'Открыть ящик <span>→</span>';
   }
 });
 
-document.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
+logoutButton.addEventListener('click', async () => {
+  await fetch(`${api}/api/logout`, {
+    method: 'POST',
+    credentials: 'include'
+  });
+  inbox.classList.add('hidden');
+  login.classList.remove('hidden');
+  passwordField.value = '';
+});
+
+async function deleteInvitation(id) {
+  if (!confirm('Удалить это приглашение?')) return;
+
+  const response = await fetch(`${api}/api/invitations/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  });
+
+  if (response.ok) {
+    await loadInvitations();
+  }
+}
+
+loadInvitations().catch(() => {
+  showMessage('Не удалось подключиться к серверу. Проверь настройки Render.');
+});
