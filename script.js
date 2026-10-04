@@ -20,14 +20,14 @@ form.addEventListener('submit', async (event) => {
     });
     if (!response.ok) throw new Error('request failed');
     const when = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date(`${details.date}T12:00:00`));
-    successText.textContent = `Приглашение на ${when}, ${details.time} отправлено. Обсудите его вместе и выберите то, что комфортно вам обоим.`;
+    successText.textContent = `Желание на ${when}, ${details.time} отправлено Марку. В скором времени отвечу любовь моя`;
     dialog.showModal(); form.reset();
   } catch {
     successText.textContent = 'Не удалось отправить приглашение. Проверьте подключение сайта и попробуйте ещё раз.';
     dialog.showModal();
   } finally {
     submitButton.disabled = false;
-    submitButton.innerHTML = 'Отправить приглашение <span>→</span>';
+    submitButton.innerHTML = 'Отправить Желание <span>→</span>';
   }
 });
 
